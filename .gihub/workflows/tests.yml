@@ -1,0 +1,67 @@
+name: C++ GA Testing
+
+# Kích hoạt workflow khi có push hoặc pull request vào nhánh main
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  ga-test:
+    name: Solve GA for ${{ matrix.problem }}
+    runs-on: ubuntu-latest
+
+    # Định nghĩa chiến lược matrix để chạy nhiều job với các tham số khác nhau
+    strategy:
+      fail-fast: false
+      matrix:
+        problem: ["20.5.1", "20.5.2", "20.5.3", "20.5.4", "50.10.1", "50.10.2", "50.10.3", "50.10.4", "200.40.1", "200.40.2", "200.40.3", "200.40.4"]
+
+    steps:
+    # 1. Checkout Repository
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    # 2. Cài đặt Dependencies (g++ với C++17 và hỗ trợ OpenMP)
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y g++ make
+
+    # 3. Tạo cấu trúc thư mục cho file dữ liệu
+    - name: Setup Data Directories
+      run: |
+        mkdir -p "D2D Problem/random_data"
+
+    # 4. (Tùy chọn) Thêm file dữ liệu mẫu để kiểm tra
+    #    Nếu bạn muốn tạo file dữ liệu mẫu trực tiếp trong workflow, hãy bỏ comment và điều chỉnh bước này
+    # - name: Add Sample Data Files
+    #   run: |
+    #     echo "number_staff 5" > "D2D Problem/random_data/${{ matrix.problem }}.txt"
+    #     echo "number_drone 3" >> "D2D Problem/random_data/${{ matrix.problem }}.txt"
+    #     echo "droneLimitationFightTime(s) 3600" >> "D2D Problem/random_data/${{ matrix.problem }}.txt"
+    #     echo "Customers 10" >> "D2D Problem/random_data/${{ matrix.problem }}.txt"
+    #     # Thêm dữ liệu khách hàng theo định dạng yêu cầu
+    #     echo "0 0 0 0 0 0" >> "D2D Problem/random_data/${{ matrix.problem }}.txt"
+    #     for i in $(seq 1 10); do
+    #       echo "$i $(($i * 10)) $(($i * 5)) 0 0 0" >> "D2D Problem/random_data/${{ matrix.problem }}.txt"
+    #     done
+
+    # 5. Compile chương trình C++
+    - name: Compile C++ Program
+      run: |
+        g++ -std=c++17 -fopenmp -O3 mul.cpp -o mul.exe
+
+    # 6. Chạy chương trình đã compile
+    - name: Run Program
+      run: |
+        PROBLEM_NAME="${{ matrix.problem }}"
+        DATA_FILE="D2D Problem/random_data/${PROBLEM_NAME}.txt"
+
+        # Kiểm tra xem file dữ liệu có tồn tại không
+        if [ -f "$DATA_FILE" ]; then
+          echo "Data file $DATA_FILE found. Running the program..."
+          # Chạy chương trình với các tham số từ matrix
+          mul.exe "$PROBLEM_NAME"
+        else
+          echo "Data file $DATA_FILE not found. Skipping program execution."
+        fi
