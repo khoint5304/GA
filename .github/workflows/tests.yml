@@ -61,7 +61,7 @@ jobs:
         if [ -f "$DATA_FILE" ]; then
           echo "Data file $DATA_FILE found. Running the program..."
           # Chạy chương trình với các tham số từ matrix
-          mul.exe "$PROBLEM_NAME"
+          ./mul.exe "$PROBLEM_NAME"
         else
           echo "Data file $DATA_FILE not found. Skipping program execution."
         fi
