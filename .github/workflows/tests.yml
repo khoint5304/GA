@@ -62,7 +62,7 @@ jobs:
     - name: Setup Data Directories
       run: |
         mkdir -p "problems/tsp"
-        - name: Compile C++ Program
+    - name: Compile C++ Program
       run: |
         g++ -std=c++17 -fopenmp -O3 tsp.cpp -o tsp.exe
 
