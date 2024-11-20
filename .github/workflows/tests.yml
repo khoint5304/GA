@@ -73,7 +73,7 @@ jobs:
 
         if [ -f "$DATA_FILE" ]; then
           echo "Data file $DATA_FILE found. Running the program..."
-          ./mul.exe "$PROBLEM_NAME"
+          ./tsp.exe "$PROBLEM_NAME"
         else
           echo "Data file $DATA_FILE not found. Skipping program execution."
         fi
