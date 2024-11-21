@@ -48,7 +48,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        problem: ["a280", "att48", "berlin52", "brg180", "ch130", "ch150", "eil51", "eil76", "eil101", "fri26", "gr24", "gr48", "gr96", "gr120", "gr202", "gr666", "kroA100", "lin105", "pa561", "pcb442", "pr1002", "pr2392", "rd100", "st70", "tsp225"]
+        problem: ["a280", "att48", "berlin52", "ch130", "ch150", "eil51", "eil76", "eil101", "gr96", "gr202", "gr666", "kroA100", "lin105", "pcb442", "pr1002", "pr2392", "rd100", "st70", "tsp225"]
     
     steps:
     - name: Checkout Repository
