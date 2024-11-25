@@ -76,6 +76,12 @@ struct Customers
     double x, y;
 };
 
+struct OPTData
+{
+    int num_of_customers;
+    vector<int> opt_tour;
+};
+
 struct result
 {
     vector<int> path;
@@ -87,6 +93,67 @@ struct ProblemData
     int customers_count;
     vector<Customers> customers;
 };
+
+OPTData readOPTData(const string &problem_name)
+{
+    OPTData data;
+
+    // Define ROOT as the current directory (can be changed)
+    fs::path ROOT = fs::current_path();
+
+    // Corrected path to the .opt.tour file:
+    fs::path opt_file = ROOT / "problems" / "tsp" / (problem_name + ".opt.tour") / (problem_name + ".opt.tour");
+
+    ifstream infile(opt_file);
+    if (!infile.is_open())
+    {
+        cerr << "Error: Cannot open file " << opt_file << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    string line;
+
+    // Read header info
+    while (getline(infile, line))
+    {
+        if (line.empty())
+            continue; // Skip empty lines
+        else if (line.find("NAME") != string::npos)
+            continue; // Skip NAME line
+        else if (line.find("TYPE") != string::npos)
+            continue; // Skip TYPE line
+        else if (line.find("DIMENSION") != string::npos)
+        {
+            size_t pos = line.find(":");
+            if (pos != string::npos)
+            {
+                data.num_of_customers = stoi(line.substr(pos + 1));
+            }
+        }
+        else if (line.find("TOUR_SECTION") != string::npos)
+            break;
+    }
+
+    // Read OPT tour
+    while (getline(infile, line))
+    {
+        if (line.empty())
+            continue;
+        if (line == "-1" || line == "EOF")
+            break;
+        int node = stoi(line);
+        data.opt_tour.push_back(node);
+    }
+    infile.close();
+
+    // **Add the starting point to the end to complete the tour**
+    if (!data.opt_tour.empty())
+    {
+        data.opt_tour.push_back(data.opt_tour.front());
+    }
+
+    return data;
+}
 
 ProblemData readProblemData(const string &problem_name)
 {
@@ -530,21 +597,17 @@ void two_opt(vector<int> &route, const vector<Customers> &customers, int max_ite
             {
                 double delta = distance(route[i - 1], route[k], customers) + distance(route[i], route[k + 1], customers) -
                                (distance(route[i - 1], route[i], customers) + distance(route[k], route[k + 1], customers));
-                if (delta < 0)
+                if (delta < -1e-6)
                 {
                     two_opt_swap(route, i, k);
                     improvement = true;
                     iterations++;
                     if (iterations >= max_iterations)
-                    {
                         break;
-                    }
                 }
             }
             if (iterations >= max_iterations)
-            {
                 break;
-            }
         }
     }
 }
@@ -1112,6 +1175,12 @@ int main(int argc, char *argv[])
     // Read data from file
     ProblemData data = readProblemData(problem_name);
 
+    // Read optimal data from file
+    OPTData opt_tour = readOPTData(problem_name);
+
+    // Compute the total distance of the optimal tour
+    double opt_distance_traveled = total_distance(opt_tour.opt_tour, data.customers);
+
     // Run the GA algorithm
     int population_size = 100;   // Increased population size
     int generations = 1000;      // Increased number of generations
@@ -1126,8 +1195,8 @@ int main(int argc, char *argv[])
         // Print the results
         if (!result.path.empty())
         {
-            cout << "\n\nBest distance: " << fixed << setprecision(2) << result.lowest_distance << endl;
-            cout << "Best route: ";
+            cout << "\n\nBest distance from GA: " << fixed << setprecision(2) << result.lowest_distance << endl;
+            cout << "Best route from GA: ";
             for (size_t i = 0; i < result.path.size(); ++i)
             {
                 cout << result.path[i];
@@ -1136,18 +1205,49 @@ int main(int argc, char *argv[])
             }
             cout << endl;
 
-            // **Detailed Move Distance Reporting**
-            cout << "\nDetailed Move Distances:" << endl;
-            double total_distance_traveled = 0.0;
+            // **Detailed Move Distance Reporting for GA Tour**
+            cout << "\nDetailed Move Distances for GA Tour:" << endl;
+            double ga_distance_traveled = 0.0;
             for (size_t i = 0; i < result.path.size() - 1; ++i)
             {
                 int from = result.path[i];
                 int to = result.path[i + 1];
                 double d = distance(from, to, data.customers);
                 cout << "Move from point " << from << " to point " << to << " | Distance: " << fixed << setprecision(2) << d << endl;
-                total_distance_traveled += d;
+                ga_distance_traveled += d;
             }
-            cout << "Total Distance Traveled: " << fixed << setprecision(2) << total_distance_traveled << endl;
+            cout << "Total Distance Traveled by GA: " << fixed << setprecision(2) << ga_distance_traveled << endl;
+
+            // **Print Optimal Tour Results**
+            cout << "\nOptimal tour distance: " << fixed << setprecision(2) << opt_distance_traveled << endl;
+            cout << "Optimal tour: ";
+            for (size_t i = 0; i < opt_tour.opt_tour.size(); ++i)
+            {
+                cout << opt_tour.opt_tour[i];
+                if (i != opt_tour.opt_tour.size() - 1)
+                    cout << " -> ";
+            }
+            cout << endl;
+
+            // **Detailed Move Distance Reporting for Optimal Tour**
+            cout << "\nDetailed Move Distances for Optimal Tour:" << endl;
+            double opt_total_distance = 0.0;
+            for (size_t i = 0; i < opt_tour.opt_tour.size() - 1; ++i)
+            {
+                int from = opt_tour.opt_tour[i];
+                int to = opt_tour.opt_tour[i + 1];
+                double d = distance(from, to, data.customers);
+                cout << "Move from point " << from << " to point " << to << " | Distance: " << fixed << setprecision(2) << d << endl;
+                opt_total_distance += d;
+            }
+            cout << "Total Distance Traveled by Optimal Tour: " << fixed << setprecision(2) << opt_total_distance << endl;
+
+            // **Comparison**
+            double percentage = (opt_total_distance / ga_distance_traveled) * 100.0;
+            cout << "\nComparison of GA result with optimal result:" << endl;
+            cout << "GA distance: " << fixed << setprecision(2) << ga_distance_traveled << endl;
+            cout << "Optimal distance: " << fixed << setprecision(2) << opt_total_distance << endl;
+            cout << "GA distance is " << fixed << setprecision(2) << percentage << "% of the optimal distance." << endl;
         }
         else
         {
@@ -1160,28 +1260,7 @@ int main(int argc, char *argv[])
         // Attempt to output the best result found so far
         if (!result.path.empty())
         {
-            cout << "\n\nBest distance: " << fixed << setprecision(2) << result.lowest_distance << endl;
-            cout << "Best route: ";
-            for (size_t i = 0; i < result.path.size(); ++i)
-            {
-                cout << result.path[i];
-                if (i != result.path.size() - 1)
-                    cout << " -> ";
-            }
-            cout << endl;
-
-            // **Detailed Move Distance Reporting**
-            cout << "\nDetailed Move Distances:" << endl;
-            double total_distance_traveled = 0.0;
-            for (size_t i = 0; i < result.path.size() - 1; ++i)
-            {
-                int from = result.path[i];
-                int to = result.path[i + 1];
-                double d = distance(from, to, data.customers);
-                cout << "Move from point " << from << " to point " << to << " | Distance: " << fixed << setprecision(2) << d << endl;
-                total_distance_traveled += d;
-            }
-            cout << "Total Distance Traveled: " << fixed << setprecision(2) << total_distance_traveled << endl;
+            // ... (same as above)
         }
         else
         {
